@@ -6,15 +6,27 @@
 
 using namespace std;
 
+struct MPCResult
+{
+  double throttle;
+  double angle;
+  std::vector<double> x_prediction;
+  std::vector<double> y_prediction;
+};
+
 class MPC {
  public:
   MPC();
-
   virtual ~MPC();
 
-  // Solve the model given an initial state and polynomial coefficients.
-  // Return the first actuatotions.
-  vector<double> Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
+  Eigen::MatrixXd transformCoordinates( const vector<double>& vx, const vector<double>& vy, const double& px, const double& py, const double& psi );
+  MPCResult Solve(Eigen::VectorXd state, Eigen::VectorXd coeffs);
+  std::vector<double> toStdVector( const Eigen::VectorXd& input);
+
+  static constexpr double Lf = 2.67;
+  static constexpr double ref_v = 40;
+  static constexpr int N = 18;
+  static constexpr double dt = 0.1;
 };
 
 #endif /* MPC_H */
