@@ -6,15 +6,20 @@
 
 using CppAD::AD;
 
-const int cte_multiplier = 2200;
+
+static const double Lf = 2.67;
+static const double ref_v = 40;
+static const int N = 14;
+static const double dt = 0.1;
+
 const int x_start = 0;
-const int y_start = x_start + MPC::N;
-const int psi_start = y_start + MPC::N;
-const int v_start = psi_start + MPC::N;
-const int cte_start = v_start + MPC::N;
-const int epsi_start = cte_start + MPC::N;
-const int delta_start = epsi_start + MPC::N;
-const int a_start = delta_start + MPC::N - 1;
+const int y_start = x_start + N;
+const int psi_start = y_start + N;
+const int v_start = psi_start + N;
+const int cte_start = v_start + N;
+const int epsi_start = cte_start + N;
+const int delta_start = epsi_start + N;
+const int a_start = delta_start + N - 1;
 
 class FG_eval {
     public:
@@ -29,20 +34,20 @@ class FG_eval {
 
         fg[0] = 0;
 
-        for (int i = 0; i < MPC::N; i++) {
-            fg[0] += cte_multiplier * CppAD::pow(vars[cte_start + i], 2);
-            fg[0] += CppAD::pow(vars[epsi_start + i], 2);
-            fg[0] += CppAD::pow(vars[v_start + i] - MPC::ref_v, 2);
+        for (int i = 0; i < N; i++) {
+            fg[0] += 10.0 * CppAD::pow(vars[cte_start + i], 2);
+            fg[0] += 30.0 * CppAD::pow(vars[epsi_start + i], 2);
+            fg[0] += CppAD::pow(vars[v_start + i] - ref_v, 2);
 
         }
 
-        for (int i = 0; i < MPC::N - 1; i++) {
-            fg[0] += CppAD::pow(vars[delta_start + i], 2);
+        for (int i = 0; i < N - 1; i++) {
+            fg[0] += 200.0 * CppAD::pow(vars[delta_start + i], 2);
             fg[0] += CppAD::pow(vars[a_start + i], 2);
         }
 
-        for (int i = 0; i < MPC::N - 2; i++) {
-            fg[0] += CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
+        for (int i = 0; i < N - 2; i++) {
+            fg[0] += 200.0 * CppAD::pow(vars[delta_start + i + 1] - vars[delta_start + i], 2);
             fg[0] += CppAD::pow(vars[a_start + i + 1] - vars[a_start + i], 2);
         }
 
@@ -54,7 +59,7 @@ class FG_eval {
         fg[1 + epsi_start] = vars[epsi_start];
 
         // The rest of the constraints
-        for (int t = 1; t < MPC::N; t++) {
+        for (int t = 1; t < N; t++) {
             // The state at time t+1 .
             AD < double > x1 = vars[x_start + t];
             AD < double > y1 = vars[y_start + t];
@@ -78,12 +83,12 @@ class FG_eval {
             AD < double > f0 = coeffs[0] + coeffs[1] * x0 + coeffs[2] * CppAD::pow(x0, 2) + coeffs[3] * CppAD::pow(x0, 3);
             AD < double > psides0 = CppAD::atan(coeffs[1] + (2 * coeffs[2] * x0) + (3 * coeffs[3] * CppAD::pow(x0, 2)));
 
-            fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * MPC::dt);
-            fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * MPC::dt);
-            fg[1 + psi_start + t] = psi1 - (psi0 - v0 * delta0 / MPC::Lf * MPC::dt);
-            fg[1 + v_start + t] = v1 - (v0 + a0 * MPC::dt);
-            fg[1 + cte_start + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * MPC::dt));
-            fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) - v0 * delta0 / MPC::Lf * MPC::dt);
+            fg[1 + x_start + t] = x1 - (x0 + v0 * CppAD::cos(psi0) * dt);
+            fg[1 + y_start + t] = y1 - (y0 + v0 * CppAD::sin(psi0) * dt);
+            fg[1 + psi_start + t] = psi1 - (psi0 + v0 * delta0 / Lf * dt);
+            fg[1 + v_start + t] = v1 - (v0 + a0 * dt);
+            fg[1 + cte_start + t] = cte1 - ((f0 - y0) + (v0 * CppAD::sin(epsi0) * dt));
+            fg[1 + epsi_start + t] = epsi1 - ((psi0 - psides0) + v0 * delta0 / Lf * dt);
         }
 
     }
@@ -225,10 +230,10 @@ std::vector < double > MPC::toStdVector(const Eigen::VectorXd & input) {
 }
 
 Eigen::MatrixXd MPC::transformCoordinates(const vector < double > & vx,
-    const vector < double > & vy,
-        const double & px,
-            const double & py,
-                const double & psi) {
+                                          const vector < double > & vy,
+                                          const double & px,
+                                          const double & py,
+                                          const double & psi) {
     if (vx.size() != vy.size()) {
         return Eigen::MatrixXd();
     }

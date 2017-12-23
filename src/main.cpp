@@ -74,6 +74,8 @@ Eigen::VectorXd polyfit(Eigen::VectorXd xvals, Eigen::VectorXd yvals,
 int main() {
     uWS::Hub h;
 
+    const int latency_ms = 100;
+
     // MPC is initialized here!
     MPC mpc;
     h.onMessage([ & mpc](uWS::WebSocket < uWS::SERVER > ws, char * data, size_t length,
@@ -92,12 +94,14 @@ int main() {
                     // j[1] is the data JSON object
                     vector < double > ptsx = j[1]["ptsx"];
                     vector < double > ptsy = j[1]["ptsy"];
-                    double px = j[1]["x"];
-                    double py = j[1]["y"];
-                    double psi = j[1]["psi"];
-                    double v = j[1]["speed"];
-
-                    /*
+                    const double px = j[1]["x"];
+                    const double py = j[1]["y"];
+                    const double psi = j[1]["psi"];
+                    const double v = j[1]["speed"];
+                    const double previous_steering_angle = j[1]["steering_angle"];
+                    const double previous_throttle = j[1]["throttle"];
+                    
+                                        /*
                      * TODO: Calculate steering angle and throttle using MPC.
                      *
                      * Both are in between [-1, 1].
@@ -113,17 +117,20 @@ int main() {
                     double epsi = -atan(coeffs[1]);
 
                     Eigen::VectorXd state(6);
-                    state(0) = v * MPC::dt;
-                    state(1) = 0;
-                    state(2) = -v * double(j[1]["steering_angle"]) / MPC::Lf * MPC::dt;
-                    state(3) = v + double(j[1]["throttle"]) * MPC::dt;
-                    state(4) = cte + v * sin(epsi) * MPC::dt;
-                    state(5) = epsi + state(2);
+                    //state << 0, 0, 0, v, cte, epsi;
+                    const double latency_s = latency_ms/1000;
+                    const double Lf = 2.67;
+                    state(0) = v * latency_s * cos(psi);
+                    state(1) = v * latency_s * sin(psi);
+                    state(2) = v * previous_steering_angle / Lf * latency_s;
+                    state(3) = v + previous_throttle * latency_s;
+                    state(4) = cte - v * sin(epsi) * latency_s;
+                    state(5) = epsi - state(2); //predict the state for Latency compenstation
 
                     auto solve = mpc.Solve(state, coeffs);
 
                     json msgJson;
-                    msgJson["steering_angle"] = solve.angle;
+                    msgJson["steering_angle"] = -solve.angle;
                     msgJson["throttle"] = solve.throttle;
                     msgJson["mpc_x"] = solve.x_prediction;
                     msgJson["mpc_y"] = solve.y_prediction;
@@ -141,8 +148,7 @@ int main() {
                     //
                     // NOTE: REMEMBER TO SET THIS TO 100 MILLISECONDS BEFORE
                     // SUBMITTING.
-                    double ms = MPC::dt * 1000;
-                    this_thread::sleep_for(chrono::milliseconds(int(ms)));
+                    this_thread::sleep_for(chrono::milliseconds(latency_ms));
                     ws.send(msg.data(), msg.length(), uWS::OpCode::TEXT);
                 }
             } else {
