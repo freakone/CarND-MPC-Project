@@ -34,10 +34,12 @@ And has two actuators:
 The original equations of state update are looking like this:
 
 ```cpp
-x += v*cos(ψ)*dt
-y += v*sin(ψ)*dt
-v += a * dt
-psi += v/Lf * δ * dt
+x(t+1) += x(t) + v(t) * cos(ψ(t)) * dt
+y(t+1) += y(t) + v(t) * sin(ψ(t)) * dt
+v(t+1) = v(t) + a * dt
+ψ(t+1) = ψ(t) + v(t)/Lf * δ(t) * dt
+cte(t+1) = cte(t) - y(t) + v(t) * sin(eψ(t)) * dt
+eψ(t+1) = ψ(t) - ψdes(t) + v(t)/Lf * δ(t) * dt
 ```
 
 Below there is an implementation of that equations in `MPC.cpp` file

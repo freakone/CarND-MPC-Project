@@ -98,15 +98,8 @@ int main() {
                     const double py = j[1]["y"];
                     const double psi = j[1]["psi"];
                     const double v = j[1]["speed"];
-                    const double previous_steering_angle = j[1]["steering_angle"];
-                    const double previous_throttle = j[1]["throttle"];
-                    
-                                        /*
-                     * TODO: Calculate steering angle and throttle using MPC.
-                     *
-                     * Both are in between [-1, 1].
-                     *
-                     */
+                    const double throttle = j[1]["throttle"];
+                    const double steering_angle =  j[1]["steering_angle"];
 
                     auto matrix = mpc.transformCoordinates(ptsx, ptsy, px, py, psi);
                     const auto & xv = matrix.row(0);
@@ -120,12 +113,12 @@ int main() {
                     //state << 0, 0, 0, v, cte, epsi;
                     const double latency_s = latency_ms/1000;
                     const double Lf = 2.67;
-                    state(0) = v * latency_s * cos(psi);
-                    state(1) = v * latency_s * sin(psi);
-                    state(2) = v * previous_steering_angle / Lf * latency_s;
-                    state(3) = v + previous_throttle * latency_s;
-                    state(4) = cte - v * sin(epsi) * latency_s;
-                    state(5) = epsi - state(2); //predict the state for Latency compenstation
+                    state(0) = v * latency_s;
+                    state(1) = 0;
+                    state(2) = -v * steering_angle / Lf * latency_s;
+                    state(3) = v + throttle * latency_s;
+                    state(4) = cte + v * sin(epsi) * latency_s;
+                    state(5) = epsi + state(2); //predict the state for Latency compenstation
 
                     auto solve = mpc.Solve(state, coeffs);
 
