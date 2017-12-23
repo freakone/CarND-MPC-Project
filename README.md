@@ -1,6 +1,8 @@
 # CarND-Controls-MPC
 Self-Driving Car Engineer Nanodegree Program
 
+![](images/mpc.gif)
+
 ## Basic Build Instructions
 
 0. Tested only on Ubuntu
